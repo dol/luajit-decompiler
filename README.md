@@ -93,10 +93,7 @@ There is a lot of work to do. In order of priority:
 	   This is mostly done, but only in the "common sense" part.
 
 3. Features not supported:
-	1. GOTO statement (from Lua 5.2). All the required functionality is
-		now in place, but that's a rather low-priority task right now.
-
-	2. Local sub-blocks:
+	1. Local sub-blocks:
 	```lua
 	do
 		...

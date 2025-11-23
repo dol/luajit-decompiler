@@ -590,6 +590,24 @@ class Break:
         visitor._leave_node(visitor.leave_break, self)
 
 
+class Goto:
+    def __init__(self):
+        self.label = None  # Will store the target block index or label name
+
+    def _accept(self, visitor):
+        visitor._visit_node(visitor.visit_goto, self)
+        visitor._leave_node(visitor.leave_goto, self)
+
+
+class Label:
+    def __init__(self):
+        self.name = None  # Will store the label name
+
+    def _accept(self, visitor):
+        visitor._visit_node(visitor.visit_label, self)
+        visitor._leave_node(visitor.leave_label, self)
+
+
 class While:
     def __init__(self):
         self.expression = None

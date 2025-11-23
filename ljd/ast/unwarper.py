@@ -99,6 +99,14 @@ def unwarp(node, conservative=False):
             raise
 
     try:
+        _run_step(_insert_goto_labels, node)
+    except:
+        if catch_asserts:
+            print("-- Decompilation Error: _run_step(_insert_goto_labels, node)\n", file=sys.stdout)
+        else:
+            raise
+
+    try:
         _run_step(_cleanup_ast, node)
         pass
     except:
@@ -331,6 +339,22 @@ def _unwarp_ifs(blocks, top_end=None, topmost_end=None):
         abort_loop = False
         if isinstance(warp, nodes.UnconditionalWarp):
             if warp.type == nodes.UnconditionalWarp.T_FLOW:
+                start_index += 1
+                continue
+
+            # If this is a T_JUMP, convert it to a goto statement
+            if warp.type == nodes.UnconditionalWarp.T_JUMP:
+                # Create a Goto node and add it to the block contents
+                goto_node = nodes.Goto()
+                goto_node.label = warp.target.index
+                start.contents.append(goto_node)
+
+                # Convert the warp to a flow to the next block
+                if start_index + 1 < len(blocks):
+                    _set_flow_to(start, blocks[start_index + 1])
+                else:
+                    _set_end(start)
+
                 start_index += 1
                 continue
 
@@ -2195,6 +2219,30 @@ def _is_jump(warp):
            and warp.type == nodes.UnconditionalWarp.T_JUMP
 
 
+def _insert_goto_labels(blocks):
+    """Insert Label nodes at the beginning of blocks that are targets of Goto statements."""
+    # First, collect all blocks that have Goto statements pointing to them
+    goto_targets = set()
+
+    for block in blocks:
+        for content in block.contents:
+            if isinstance(content, nodes.Goto):
+                # Find the target block by index
+                for target_block in blocks:
+                    if target_block.index == content.label:
+                        goto_targets.add(target_block)
+                        break
+
+    # Now insert Label nodes at the beginning of target blocks
+    for block in goto_targets:
+        label_node = nodes.Label()
+        label_node.name = f"label_{block.index}"
+        # Insert at the beginning of the block's contents
+        block.contents.insert(0, label_node)
+
+    return blocks
+
+
 def _fix_nested_ifs(blocks, start):
     # We can't point both targets of a conditional warp to the
     # same block. We will have to create a new block
@@ -2266,7 +2314,7 @@ def _unwarp_breaks(start, blocks, next_block):
             patched.append(block)
             continue
 
-        assert target in ends, "GOTO statements are not supported"
+        # Allow unconditional jumps (gotos) to blocks outside the current loop
 
         if block.warpins_count != 0 \
                 and not (len(block.contents) == 1 and isinstance(block.contents[0], nodes.NoOp)):
@@ -2325,7 +2373,7 @@ def _unwarp_breaks(start, blocks, next_block):
         if target in blocks_set:
             continue
 
-        assert target in ends, "GOTO statements are not supported"
+        # Allow unconditional jumps (gotos) to blocks outside the current loop
 
         if pending_break is None:
             assert len(breaks_stack) > 0
@@ -2489,7 +2537,12 @@ def _cleanup_ast(blocks):
 
         targets = _find_warps_to(blocks, block)
 
-        assert targets
+        # Skip unreachable blocks (those created by gotos)
+        if not targets:
+            # Remove unreachable block
+            blocks.remove(block)
+            next_i -= 1
+            continue
 
         if len(targets) != 1:
             continue

@@ -182,6 +182,18 @@ class Visitor:
     def leave_break(self, node):
         pass
 
+    def visit_goto(self, node):
+        pass
+
+    def leave_goto(self, node):
+        pass
+
+    def visit_label(self, node):
+        pass
+
+    def leave_label(self, node):
+        pass
+
     # ##
 
     def visit_while(self, node):

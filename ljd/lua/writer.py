@@ -792,11 +792,23 @@ class Visitor(traverse.Visitor):
     def visit_unconditional_warp(self, node):
         if node.type == nodes.UnconditionalWarp.T_FLOW:
             self._write("FLOW")
+            self._write("; TARGET BLOCK #{0}", node.target.index)
         elif node.type == nodes.UnconditionalWarp.T_JUMP:
-            self._write("UNCONDITIONAL JUMP")
+            # Output Lua 'goto' statement
+            label = f"label_{node.target.index}"
+            self._write(f"goto {label}")
+            self._write(f"; TARGET BLOCK #{node.target.index}")
+        self._end_line()
 
-        self._write("; TARGET BLOCK #{0}", node.target.index)
-
+    def visit_block(self, node):
+        # Emit label if this block is a jump target (has warpins_count > 0)
+        if getattr(node, 'warpins_count', 0) > 0:
+            label = f"label_{node.index}"
+            self._write(f"::{label}::")
+            self._end_line()
+        # Continue with normal block visiting
+        self._visit_list(node.contents)
+        self._visit(node.warp)
         self._end_line()
 
     def visit_conditional_warp(self, node):
@@ -876,6 +888,19 @@ class Visitor(traverse.Visitor):
         self._write("break")
 
         self._end_statement(STATEMENT_BREAK)
+
+    def visit_goto(self, node):
+        self._start_statement(STATEMENT_BREAK)  # Use STATEMENT_BREAK for now
+
+        label_name = f"label_{node.label}"
+        self._write(f"goto {label_name}")
+
+        self._end_statement(STATEMENT_BREAK)
+
+    def visit_label(self, node):
+        # Labels don't need statement tracking
+        self._write(f"::{node.name}::")
+        self._end_line()
 
     # ##
 

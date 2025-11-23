@@ -48,6 +48,8 @@ STATEMENT_TYPES = (
     nodes.RepeatUntil,
     nodes.Return,
     nodes.Break,
+    nodes.Goto,
+    nodes.Label,
     nodes.FunctionCall,
     nodes.NoOp,
     nodes.While
